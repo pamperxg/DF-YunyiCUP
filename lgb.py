@@ -15,6 +15,7 @@ import lightgbm as lgb
 from scipy.sparse import csr_matrix,hstack
 import gc
 
+#评测指标
 def score(predict,label):
     error = []
     for i in range(len(label)):
@@ -26,6 +27,7 @@ def score(predict,label):
     score = 1/(1+RMSE)       
     return score
 
+#load用到的数据
 with open('../input/positiveWords_.txt',encoding='UTF-8') as words:
     positiveWords = [i.strip() for i in words.readlines()]
 with open('../input/negativeWords_.txt',encoding='UTF-8') as words:
@@ -33,11 +35,11 @@ with open('../input/negativeWords_.txt',encoding='UTF-8') as words:
 stop_words = ['的','是']
 positiveWords = set(positiveWords)
 negativeWords = set(negativeWords)
-
 train_df = pd.read_csv('../input/train_first.csv')
 test_df = pd.read_csv('../input/predict_first.csv')
 all_df = pd.concat([train_df,test_df],axis=0)
 
+#文本特征提取
 all_words = []
 for discuss in all_df['Discuss']:
     words = []
@@ -51,6 +53,7 @@ for discuss in all_df['Discuss']:
 all_df['Dis_cut'] = all_words
 
 model = Word2Vec(all_words,min_count=5,size=256,workers=4)
+#fname = '../input/fuck.bin'
 # model.save(fname)
 # model = Word2Vec.load(fname)
 l_dis_cut = list(all_df['Dis_cut'])[0]
@@ -93,6 +96,7 @@ def get_negative(dis_cut):
         if word in negativeWords:  
             count += 1
     return count
+
 all_df['dis_len'] = all_df['Dis_cut'].apply(lambda s:len(s))
 all_df['pos'] = all_df['Dis_cut'].apply(get_positive)    #正负向词个数
 all_df['neg'] = all_df['Dis_cut'].apply(get_negative)
@@ -106,6 +110,7 @@ features = list(all_df.columns)[4:]
 data_ = scipy.sparse.csr_matrix(all_df[features].values)
 data_a = hstack((data_,data)).tocsr()
 
+#模型训练测试
 X = data_a[:100000]       #训练集
 y = train_df[['Score']]
 test = data_a[100000:]    #测试集
@@ -126,8 +131,4 @@ model_lgb.fit(X,list(y.values))
 predict = model_lgb.predict(test)
 sub = test_df[['Id']]
 sub['1'] = predict
-sub.to_csv('../sub/result.csv',header=None,index=None)
-
-
-
-
+sub.to_csv('../sub/sub.csv',header=None,index=None)
